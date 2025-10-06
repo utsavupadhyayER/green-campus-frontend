@@ -1,0 +1,28 @@
+export const mockDonations = [
+  {
+    id: '1',
+    donated_by: '1',
+    item_name: 'Engineering Textbooks',
+    category: 'books',
+    condition: 'good',
+    quantity: 5,
+    description: 'Semester 1-4 engineering books, well maintained',
+    location: 'Hostel A, Room 204',
+    status: 'available',
+    created_at: new Date().toISOString(),
+    donor: { id: '1', full_name: 'Rahul Sharma' },
+  },
+  {
+    id: '2',
+    donated_by: '1',
+    item_name: 'Winter Jackets',
+    category: 'clothes',
+    condition: 'good',
+    quantity: 2,
+    description: 'Gently used warm jackets',
+    location: 'Hostel A, Room 204',
+    status: 'available',
+    created_at: new Date().toISOString(),
+    donor: { id: '1', full_name: 'Rahul Sharma' },
+  },
+];
