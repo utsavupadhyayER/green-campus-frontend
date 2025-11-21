@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Leaf,
@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 
 export default function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth(); // ✅ FIXED: logout (not signOut)
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
 
@@ -40,10 +41,16 @@ export default function Navbar() {
     setOpenDropdown(null);
   };
 
+  const handleLogout = () => {
+    logout();         // 🟢 Clears token + user state
+    navigate("/login"); // 🟢 Redirect to login
+  };
+
   return (
     <nav className="bg-white shadow-md border-b border-gray-200 fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+          
           {/* Logo */}
           <Link
             to="/"
@@ -158,14 +165,17 @@ export default function Navbar() {
                       {user.role.replace("_", " ")}
                     </div>
                   </div>
+
                   {user.role === "student" && (
                     <div className="ml-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold">
                       {user.volunteer_points} pts
                     </div>
                   )}
                 </div>
+
+                {/* LOGOUT BUTTON */}
                 <button
-                  onClick={() => signOut()}
+                  onClick={handleLogout}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Sign Out"
                 >

@@ -5,7 +5,8 @@ import { Leaf, CircleUser as UserCircle, Building2, ChefHat, Shield } from 'luci
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { signUp } = useAuth(); // ✅ use AuthContext
+  const { signUp } = useAuth();
+
   const [selectedRole, setSelectedRole] = useState(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,36 +28,36 @@ export default function RegisterPage() {
   };
 
   const handleRegister = async () => {
-    if (!selectedRole) return setMessage('Please select a role');
-    if (!fullName || !email || !password) return setMessage('All fields are required');
+    if (!selectedRole || !fullName || !email || !password) {
+      setMessage("All fields are required");
+      return;
+    }
 
     try {
-      await signUp(fullName, email, password, selectedRole); // ✅ register & set user in context
+      await signUp(fullName, email, password, selectedRole);
 
-      const redirectPath = roleRedirectMap[selectedRole] || '/';
-      navigate(redirectPath);
+      navigate(roleRedirectMap[selectedRole] || '/');
     } catch (err) {
-      setMessage(err.message || 'Registration failed');
+      setMessage(err.response?.data?.message || "Registration failed");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-teal-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-50 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
+
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Leaf className="w-16 h-16 text-green-600" />
             <h1 className="text-5xl font-bold text-gray-800">GreenCampus 2.0</h1>
           </div>
-          <p className="text-xl text-gray-600">Real-Time Sustainability & Volunteer Platform</p>
-          <p className="text-sm text-gray-500 mt-2">Connect. Contribute. Create Impact.</p>
+          <p className="text-xl text-gray-600">Real-Time Sustainability Platform</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">Create Account</h2>
-          <p className="text-center text-gray-600 mb-8">Select role & enter your details</p>
+          <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">Create Account</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {roles.map((role) => {
               const Icon = role.icon;
               return (
@@ -77,49 +78,27 @@ export default function RegisterPage() {
           </div>
 
           <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full p-3 mb-3 border rounded-lg"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 mb-3 border rounded-lg"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border rounded-lg"
-            />
+            <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Full Name"
+              value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email"
+              value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="w-full p-3 border rounded-lg" placeholder="Password" type="password"
+              value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
 
           {message && <p className="text-center text-red-600 mb-4">{message}</p>}
 
           <button
             onClick={handleRegister}
-            className={`w-full py-4 rounded-xl font-semibold text-white text-lg transition-all ${
-              selectedRole && fullName && email && password
-                ? 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 cursor-not-allowed'
-            }`}
-            disabled={!selectedRole || !fullName || !email || !password}
+            className="w-full py-4 rounded-xl font-semibold text-white text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:shadow-xl"
           >
-            {selectedRole ? 'Continue as ' + roles.find((r) => r.value === selectedRole)?.label : 'Select a Role'}
+            Register
           </button>
 
           <p className="mt-4 text-center text-gray-600 text-sm">
-            Already have an account?{' '}
-            <Link to="/login" className="text-green-600 hover:underline">
-              Login
-            </Link>
+            Already have an account? <Link to="/login" className="text-green-600">Login</Link>
           </p>
+
         </div>
       </div>
     </div>
