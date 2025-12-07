@@ -33,13 +33,13 @@ export default function VolunteersPage() {
     points_reward: 10,
   });
 
-  // dynamic nav height to avoid collisions with fixed navbar
+  // dynamic nav height
   const [navHeight, setNavHeight] = useState(0);
   useEffect(() => {
     const setHeight = () => {
       const nav = document.querySelector("nav");
       if (nav) setNavHeight(nav.offsetHeight);
-      else setNavHeight(64); // fallback
+      else setNavHeight(64);
     };
 
     setHeight();
@@ -49,7 +49,6 @@ export default function VolunteersPage() {
 
   useEffect(() => {
     fetchEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchEvents() {
@@ -57,7 +56,6 @@ export default function VolunteersPage() {
     setError(null);
     try {
       const res = await api.get("/volunteers");
-      // support both shapes: axios responses and direct arrays
       const payload = res.data ?? [];
       setEvents(Array.isArray(payload) ? payload : (payload.data || payload));
     } catch (err) {
@@ -91,6 +89,7 @@ export default function VolunteersPage() {
       const created = res.data ?? res.data?.data;
       setEvents((prev) => [created, ...prev]);
       setShowForm(false);
+
       setFormData({
         title: "",
         description: "",
@@ -138,29 +137,24 @@ export default function VolunteersPage() {
     }
   };
 
+  // FIXED HERE ⭐ reload events after marking complete
   const handleMarkComplete = async (eventId) => {
     if (!confirm("Mark this event as completed and award points to participants?")) return;
 
     try {
-      // backend endpoint is POST /volunteers/:id/complete
-      const res = await api.post(`/volunteers/${eventId}/complete`);
-      const payload = res.data?.data ?? res.data;
-      setEvents((prev) => prev.map((ev) => (idOf(ev) === eventId ? payload : ev)));
-      alert("Event marked completed and points awarded (if any).");
+      await api.post(`/volunteers/${eventId}/complete`);
+      await fetchEvents();
+      alert("Event marked completed and points awarded.");
     } catch (err) {
       console.error("Complete error", err);
       alert(err?.response?.data?.message || err.message || "Failed to mark complete");
     }
   };
 
-  // returns true if current user (student) is registered for the event
   const userIsRegistered = (ev) => {
     const userId = user?._id || user?.id;
     if (!userId) return false;
 
-    // Support different shapes:
-    // - new: ev.registered -> [{ user: ObjectId, points_awarded, ... }]
-    // - legacy: ev.registered_users -> [ { _id, full_name } ] or array of ids
     const regs = ev.registered || ev.registered_users || [];
     return regs.some((r) => {
       if (!r) return false;
@@ -168,14 +162,11 @@ export default function VolunteersPage() {
         const uid = r.user._id || r.user;
         return uid?.toString() === userId?.toString();
       }
-      if (r._id) {
-        return r._id?.toString() === userId?.toString();
-      }
+      if (r._id) return r._id?.toString() === userId?.toString();
       return r.toString() === userId?.toString();
     });
   };
 
-  // organizer check: only event creator or admin can manage the event (delete/complete/attendance)
   const isOrganizer = (ev) => {
     const userId = user?._id || user?.id;
     const creatorId = ev.created_by?._id || ev.created_by;
@@ -186,7 +177,10 @@ export default function VolunteersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 py-8" style={{ paddingTop: navHeight || 64 }}>
+      <div
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 py-8"
+        style={{ paddingTop: navHeight || 64 }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <div className="h-10 w-1/3 bg-gray-200 rounded animate-pulse" />
@@ -220,7 +214,9 @@ export default function VolunteersPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-800 mb-2">Volunteer Events</h1>
-            <p className="text-gray-600">Create, join, and complete volunteer opportunities to earn points.</p>
+            <p className="text-gray-600">
+              Create, join, and complete volunteer opportunities to earn points.
+            </p>
           </div>
 
           {canCreate && (
@@ -234,17 +230,24 @@ export default function VolunteersPage() {
           )}
         </div>
 
-        {/* form card */}
+        {/* create form */}
         {showForm && canCreate && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">Create Volunteer Event</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700" aria-label="Close form">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Create Volunteer Event
+              </h2>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
                 ✕
               </button>
             </div>
 
-            {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
+            {error && (
+              <div className="mb-3 text-sm text-red-600">{error}</div>
+            )}
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,13 +255,17 @@ export default function VolunteersPage() {
                   required
                   placeholder="Event Title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
 
                 <select
                   value={formData.event_type}
-                  onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, event_type: e.target.value })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="food_drive">Food Drive</option>
@@ -272,7 +279,9 @@ export default function VolunteersPage() {
                   required
                   placeholder="Location"
                   value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
 
@@ -280,7 +289,9 @@ export default function VolunteersPage() {
                   required
                   type="datetime-local"
                   value={formData.event_date}
-                  onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, event_date: e.target.value })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
 
@@ -289,7 +300,12 @@ export default function VolunteersPage() {
                   min="1"
                   placeholder="Duration (hours)"
                   value={formData.duration_hours}
-                  onChange={(e) => setFormData({ ...formData, duration_hours: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      duration_hours: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
 
@@ -298,7 +314,12 @@ export default function VolunteersPage() {
                   min="1"
                   placeholder="Max volunteers"
                   value={formData.max_volunteers}
-                  onChange={(e) => setFormData({ ...formData, max_volunteers: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      max_volunteers: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
 
@@ -307,7 +328,12 @@ export default function VolunteersPage() {
                   min="0"
                   placeholder="Points reward"
                   value={formData.points_reward}
-                  onChange={(e) => setFormData({ ...formData, points_reward: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      points_reward: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 />
               </div>
@@ -316,63 +342,109 @@ export default function VolunteersPage() {
                 placeholder="Description"
                 rows="3"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    description: e.target.value,
+                  })
+                }
                 className="w-full px-4 py-2 border rounded-lg"
               />
 
               <div className="flex gap-3">
-                <button disabled={submitting} type="submit" className="bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold">
+                <button
+                  disabled={submitting}
+                  type="submit"
+                  className="bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold"
+                >
                   {submitting ? "Creating..." : "Create Event"}
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2 rounded-lg border">Cancel</button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2 rounded-lg border"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* events grid */}
+        {/* events */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {events.map((ev) => {
             const eventId = idOf(ev);
-            const full = (ev.registered_count || 0) >= (ev.max_volunteers || Infinity);
+            const full =
+              (ev.registered_count || 0) >= (ev.max_volunteers || Infinity);
             const registered = userIsRegistered(ev);
             const organizer = isOrganizer(ev);
 
             return (
-              <article key={eventId} className="bg-white rounded-xl shadow-md hover:shadow-xl border overflow-hidden">
+              <article
+                key={eventId}
+                className="bg-white rounded-xl shadow-md hover:shadow-xl border overflow-hidden"
+              >
                 <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6">
                   <div className="flex justify-between items-start">
                     <div className="text-white flex-1">
-                      <h3 className="text-2xl font-bold mb-2">{ev.title}</h3>
+                      {/* FIXED TITLE + COMPLETED BADGE */}
+                      <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                        {ev.title}
+                        {ev.status === "completed" && (
+                          <span className="px-3 py-1 bg-green-600 text-white text-xs rounded-full">
+                            Completed
+                          </span>
+                        )}
+                      </h3>
+
                       <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-white/20">
-                        {(ev.event_type || "other").replace("_", " ").toUpperCase()}
+                        {(ev.event_type || "other")
+                          .replace("_", " ")
+                          .toUpperCase()}
                       </span>
                     </div>
 
                     <div className="bg-white/20 rounded-lg px-4 py-2 border border-white/30 text-white text-center">
                       <Award className="w-6 h-6 mx-auto mb-1" />
-                      <div className="font-bold">{ev.points_reward || 0}</div>
+                      <div className="font-bold">
+                        {ev.points_reward || 0}
+                      </div>
                       <div className="text-xs">points</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-6 space-y-4">
-                  {ev.description && <p className="text-gray-600">{ev.description}</p>}
+                  {ev.description && (
+                    <p className="text-gray-600">{ev.description}</p>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Calendar className="w-5 h-5 text-orange-500" />
                       <div>
-                        <p className="text-sm font-semibold">{ev.event_date ? new Date(ev.event_date).toLocaleDateString() : "Date TBD"}</p>
-                        <p className="text-xs">{ev.event_date ? new Date(ev.event_date).toLocaleTimeString() : ""}</p>
+                        <p className="text-sm font-semibold">
+                          {ev.event_date
+                            ? new Date(ev.event_date).toLocaleDateString()
+                            : "Date TBD"}
+                        </p>
+                        <p className="text-xs">
+                          {ev.event_date
+                            ? new Date(ev.event_date).toLocaleTimeString()
+                            : ""}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600">
                       <Users className="w-5 h-5 text-blue-500" />
                       <div>
-                        <p className="text-sm font-semibold">{ev.registered_count || 0} / {ev.max_volunteers || "-"}</p>
+                        <p className="text-sm font-semibold">
+                          {ev.registered_count || 0} /{" "}
+                          {ev.max_volunteers || "-"}
+                        </p>
                         <p className="text-xs">volunteers</p>
                       </div>
                     </div>
@@ -380,32 +452,45 @@ export default function VolunteersPage() {
 
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="w-5 h-5 text-red-500" />
-                    <span className="text-sm">{ev.location || "Location TBD"}</span>
+                    <span className="text-sm">
+                      {ev.location || "Location TBD"}
+                    </span>
                   </div>
 
                   <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
-                    <div className="text-xs text-gray-500">Organized by {ev.created_by?.full_name || "Unknown"}</div>
+                    <div className="text-xs text-gray-500">
+                      Organized by {ev.created_by?.full_name || "Unknown"}
+                    </div>
 
                     <div className="flex items-center gap-3">
-                      {isStudent && ev.status === "upcoming" && (
-                        registered ? (
+                      {/* STUDENT ACTIONS — ONLY IF NOT COMPLETED */}
+                      {isStudent &&
+                        ev.status !== "completed" &&
+                        ev.status === "upcoming" &&
+                        (registered ? (
                           <div className="bg-green-50 border border-green-200 rounded-lg p-2 flex items-center gap-2">
                             <CheckCircle className="w-5 h-5 text-green-600" />
-                            <div className="text-green-700 font-semibold text-sm">Registered</div>
+                            <div className="text-green-700 font-semibold text-sm">
+                              Registered
+                            </div>
                           </div>
                         ) : (
                           <button
                             onClick={() => handleRegister(eventId)}
                             disabled={full}
-                            className={`py-2 px-4 rounded-lg font-semibold ${full ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-orange-600 text-white hover:bg-orange-700"}`}
+                            className={`py-2 px-4 rounded-lg font-semibold ${
+                              full
+                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                : "bg-orange-600 text-white hover:bg-orange-700"
+                            }`}
                           >
                             <UserPlus className="w-4 h-4 inline-block mr-2" />
                             {full ? "Event Full" : "Register"}
                           </button>
-                        )
-                      )}
+                        ))}
 
-                      {organizer && (
+                      {/* ORGANIZER BUTTONS — ONLY IF NOT COMPLETED */}
+                      {organizer && ev.status !== "completed" && (
                         <>
                           <button
                             onClick={() => handleMarkComplete(eventId)}
@@ -434,8 +519,12 @@ export default function VolunteersPage() {
         {events.length === 0 && !loading && (
           <div className="text-center py-16">
             <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No events yet</h3>
-            <p className="text-gray-500">Create the first event to get volunteers involved.</p>
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              No events yet
+            </h3>
+            <p className="text-gray-500">
+              Create the first event to get volunteers involved.
+            </p>
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ export default function DonationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     item_name: "",
@@ -29,14 +30,18 @@ export default function DonationsPage() {
   });
 
   /* ================================
-      FETCH DONATIONS FROM BACKEND
-  ================================ */
+     FETCH DONATIONS FROM BACKEND
+  =================================*/
   const fetchDonations = async () => {
+    setLoading(true);
     try {
       const res = await api.get("/donations");
-      setDonations(res.data);
+      // support both { success, data } and older { ... } shapes
+      const items = res?.data?.data ?? res?.data ?? [];
+      setDonations(items);
     } catch (err) {
       console.error("Error loading donations", err);
+      // optionally show toast / message
     } finally {
       setLoading(false);
     }
@@ -44,20 +49,22 @@ export default function DonationsPage() {
 
   useEffect(() => {
     fetchDonations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ================================
-      CREATE DONATION (POST)
-  ================================ */
+     CREATE DONATION (POST)
+  =================================*/
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
     try {
       const res = await api.post("/donations", formData);
-
-      setDonations([res.data, ...donations]);
+      const created = res?.data?.data ?? res?.data;
+      // prepend created donation
+      setDonations((prev) => [created, ...prev]);
       setShowForm(false);
-
       setFormData({
         item_name: "",
         category: "books",
@@ -68,28 +75,32 @@ export default function DonationsPage() {
       });
     } catch (err) {
       console.error("Error posting donation", err);
-      alert("Failed to create donation");
+      alert(err?.response?.data?.message || "Failed to create donation");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   /* ================================
-      CLAIM DONATION
-  ================================ */
+     CLAIM DONATION
+     - ask confirmation
+     - update list with populated response
+  =================================*/
   const handleClaim = async (donationId) => {
+    if (!confirm("Claim this item? You will be contacted for pickup details.")) return;
     try {
       const res = await api.patch(`/donations/${donationId}/claim`, {});
-
-      // update list (functionality unchanged)
-      setDonations(donations.map((item) => (item._id === donationId ? res.data : item)));
+      const updated = res?.data?.data ?? res?.data;
+      setDonations((prev) => prev.map((item) => (item._id === donationId ? updated : item)));
     } catch (err) {
       console.error("Error claiming item", err);
-      alert("Failed to claim item");
+      alert(err?.response?.data?.message || "Failed to claim item");
     }
   };
 
   /* ================================
-      CATEGORY ICONS & COLORS
-  ================================ */
+     CATEGORY ICONS & COLORS
+  =================================*/
   const getCategoryIcon = (category) => {
     switch (category) {
       case "books":
@@ -121,8 +132,8 @@ export default function DonationsPage() {
   };
 
   /* ================================
-      Small derived stats for header
-  ================================ */
+     Small derived stats for header
+  =================================*/
   const totalAvailable = donations.filter((d) => d.status === "available").length;
   const totalDonations = donations.length;
 
@@ -154,8 +165,8 @@ export default function DonationsPage() {
   }
 
   /* ================================
-         Main UI (after loading)
-  ================================ */
+     Main UI (after loading)
+  =================================*/
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 pt-24 sm:pt-28 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -258,8 +269,8 @@ export default function DonationsPage() {
               />
 
               <div className="flex gap-3">
-                <button type="submit" className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold">
-                  Post Donation
+                <button type="submit" disabled={submitting} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold">
+                  {submitting ? "Posting..." : "Post Donation"}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)} className="px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold">
                   Cancel

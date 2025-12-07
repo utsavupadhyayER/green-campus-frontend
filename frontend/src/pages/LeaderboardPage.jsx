@@ -12,16 +12,17 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (!authLoading) fetchLeaderboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user?.token]);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
     setError(null);
     try {
-      // uses your axios instance (baseURL + Authorization header)
       const res = await api.get("/leaderboard?limit=20");
-      setLeaders(res.data.data || []);
+
+      // SAFER: check if backend returned a valid array
+      const list = res.data?.data;
+      setLeaders(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Leaderboard load error:", err);
       setError(err?.response?.data?.message || err.message || "Failed to load leaderboard");
@@ -80,8 +81,13 @@ export default function LeaderboardPage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{idx + 1}. {u.full_name}</span>
-                        {idx === 0 && <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Top</span>}
+                        <span className="text-sm font-medium text-gray-900">
+                          {idx + 1}. {u.full_name}
+                        </span>
+
+                        {idx === 0 && (
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Top</span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500">{u.role}</div>
                     </div>

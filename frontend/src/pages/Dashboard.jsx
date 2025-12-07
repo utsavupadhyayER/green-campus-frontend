@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import { useAuth } from "../contexts/AuthContext";
 import { useEffect, useState } from "react";
 import api from "../lib/api";
@@ -10,13 +11,14 @@ import {
   Heart,
   TrendingUp,
   Globe,
+  ArrowUp,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const { user } = useAuth();
 
-  // Local state for data
+  // Local state for data (always default to arrays/objects)
   const [foodPosts, setFoodPosts] = useState([]);
   const [ewasteItems, setEwasteItems] = useState([]);
   const [volunteerEvents, setVolunteerEvents] = useState([]);
@@ -24,31 +26,104 @@ export default function Dashboard() {
   const [impactStats, setImpactStats] = useState(null);
   const [liveData, setLiveData] = useState(null);
 
+  // Helpers to normalize backend responses
+  const extractArray = (res) => {
+    // Handles: res.data (array), res.data.data (array), res (array)
+    if (!res) return [];
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.data?.data)) return res.data.data;
+    // handle case: { success: true, data: { items: [...] } } -> not known; return []
+    return [];
+  };
+
+  const extractObject = (res) => {
+    // Returns the main object payload, accommodating multiple shapes
+    if (!res) return null;
+    if (typeof res === "object" && !Array.isArray(res) && res !== null) {
+      // if it already looks like an object of interest, prefer res.data or res.data.data
+      if (res.data && typeof res.data === "object" && !Array.isArray(res.data)) {
+        // if res.data has fields, often the shape is { data: { ... } }
+        // some endpoints return { success: true, data: { ... } }
+        if (res.data.data && typeof res.data.data === "object") return res.data.data;
+        return res.data;
+      }
+      // fallback to res itself if it's an object with useful keys
+      return res;
+    }
+    return null;
+  };
+
   // Load all data when page loads
   useEffect(() => {
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadDashboardData() {
     try {
-      const [foodRes, ewasteRes, eventRes, donationRes, impactRes, globalRes] =
-        await Promise.all([
-          api.get("/food"),
-          api.get("/ewaste"),
-          api.get("/volunteers"),
-          api.get("/donations"),
-          api.get("/impact"),
-          api.get("/global-stats"),
-        ]);
+      const [
+        foodRes,
+        ewasteRes,
+        eventRes,
+        donationRes,
+        impactRes,
+        globalRes,
+      ] = await Promise.all([
+        api.get("/food"),
+        api.get("/ewaste"),
+        api.get("/volunteers"),
+        api.get("/donations"),
+        api.get("/impact"),
+        api.get("/global-stats"),
+      ]);
 
-      setFoodPosts(foodRes.data);
-      setEwasteItems(ewasteRes.data);
-      setVolunteerEvents(eventRes.data);
-      setDonations(donationRes.data);
-      setImpactStats(impactRes.data);
-      setLiveData(globalRes.data);
+      // DEBUG: helpful during development — remove or comment out later
+      // console.log("dashboard responses:", { foodRes, ewasteRes, eventRes, donationRes, impactRes, globalRes });
+
+      // normalize arrays
+      setFoodPosts(extractArray(foodRes));
+      setEwasteItems(extractArray(ewasteRes));
+      setVolunteerEvents(extractArray(eventRes));
+      setDonations(extractArray(donationRes));
+
+      // normalize objects
+      const impactObject = extractObject(impactRes) || (impactRes?.data?.data ? impactRes.data.data : impactRes?.data);
+      setImpactStats(impactObject);
+
+      // global stats: backend might return { success: true, data: [...] } or an object
+      const globalPayload = globalRes?.data;
+      // prefer data field if present
+      if (Array.isArray(globalPayload?.data)) {
+        // if API returned { success: true, data: [...] }
+        // convert to a normalized object for frontend (map by data_type or keys)
+        const arr = globalPayload.data;
+        const obj = {};
+        arr.forEach((it) => {
+          if (it?.data_type) obj[it.data_type] = it.value ?? it.val ?? it.v ?? null;
+          else if (it?.key && it?.value != null) obj[it.key] = it.value;
+          // fallback: merge any plain object
+          else if (typeof it === "object") Object.assign(obj, it);
+        });
+        setLiveData(obj);
+      } else if (Array.isArray(globalPayload)) {
+        // API returned an array directly
+        const obj = {};
+        globalPayload.forEach((it) => {
+          if (it?.data_type) obj[it.data_type] = it.value ?? null;
+          else if (typeof it === "object") Object.assign(obj, it);
+        });
+        setLiveData(obj);
+      } else if (typeof globalPayload === "object" && globalPayload !== null) {
+        // API returned an object
+        // if it is { success: true, data: {...}} or directly {...}
+        if (globalPayload.data && typeof globalPayload.data === "object") setLiveData(globalPayload.data);
+        else setLiveData(globalPayload);
+      } else {
+        setLiveData(null);
+      }
     } catch (err) {
-      console.error("Failed to load dashboard data:", err.message);
+      console.error("Failed to load dashboard data:", err);
     }
   }
 
@@ -59,15 +134,16 @@ export default function Dashboard() {
     return num?.toString() || "0";
   };
 
-  // Derived values
-  const availableFood = foodPosts.filter((f) => f.status === "available").length;
-  const availableEwaste = ewasteItems.filter((e) => e.status === "available").length;
-  const upcomingEvents = volunteerEvents.filter((e) => e.status === "upcoming").length;
-  const availableDonations = donations.filter((d) => d.status === "available").length;
+  // Derived values (safe: always arrays)
+  const availableFood = Array.isArray(foodPosts) ? foodPosts.filter((f) => f.status === "available").length : 0;
+  const availableEwaste = Array.isArray(ewasteItems) ? ewasteItems.filter((e) => e.status === "available").length : 0;
+  const upcomingEvents = Array.isArray(volunteerEvents) ? volunteerEvents.filter((e) => e.status === "upcoming").length : 0;
+  const availableDonations = Array.isArray(donations) ? donations.filter((d) => d.status === "available").length : 0;
 
-  const globalFoodWaste = liveData?.food_waste || 1300000000;
-  const hungerDeaths = liveData?.hunger_deaths || 9000000;
-  const ewastePollution = liveData?.ewaste_pollution || 53600000;
+  // liveData normalization (use expected keys or fallback defaults)
+  const globalFoodWaste = liveData?.food_waste ?? liveData?.foodWaste ?? liveData?.food_waste_tons ?? 1300000000;
+  const hungerDeaths = liveData?.hunger_deaths ?? liveData?.hungerDeaths ?? 9000000;
+  const ewastePollution = liveData?.ewaste_pollution ?? liveData?.ewastePollution ?? 53600000;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 pt-20 sm:pt-24">
@@ -173,7 +249,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600 mt-1">Meals Saved</p>
               </div>
               <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-3xl font-bold text-blue-700">{impactStats.total_food_waste_kg.toFixed(0)}</p>
+                <p className="text-3xl font-bold text-blue-700">{Number(impactStats.total_food_waste_kg || 0).toFixed(0)}</p>
                 <p className="text-sm text-gray-600 mt-1">Food Waste (kg)</p>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
@@ -181,7 +257,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-600 mt-1">E-Waste Items</p>
               </div>
               <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-200">
-                <p className="text-3xl font-bold text-teal-700">{impactStats.total_co2_saved_kg.toFixed(0)}</p>
+                <p className="text-3xl font-bold text-teal-700">{Number(impactStats.total_co2_saved_kg || 0).toFixed(0)}</p>
                 <p className="text-sm text-gray-600 mt-1">CO₂ Saved (kg)</p>
               </div>
               <div className="text-center p-4 bg-violet-50 rounded-lg border border-violet-200">
@@ -200,21 +276,22 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Recent Food Posts</h3>
-            {foodPosts.slice(0, 3).map((post) => (
-              <div key={post.id} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-gray-800">{post.food_type}</p>
-                    <p className="text-sm text-gray-600">{post.quantity} • {post.location}</p>
+            {Array.isArray(foodPosts) &&
+              foodPosts.slice(0, 3).map((post) => (
+                <div key={post.id || post._id} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-gray-800">{post.food_type}</p>
+                      <p className="text-sm text-gray-600">{post.quantity} • {post.location}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      post.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'
+                    }`}>
+                      {post.status}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    post.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'
-                  }`}>
-                    {post.status}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
             <Link to="/food" className="text-green-600 hover:text-green-700 font-semibold text-sm">
               View all →
             </Link>
@@ -222,15 +299,16 @@ export default function Dashboard() {
 
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Upcoming Events</h3>
-            {volunteerEvents.slice(0, 3).map((event) => (
-              <div key={event.id} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="font-semibold text-gray-800">{event.title}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {new Date(event.event_date).toLocaleDateString()} • {event.registered_count}/{event.max_volunteers} registered
-                </p>
-                <p className="text-xs text-green-600 font-semibold mt-1">+{event.points_reward} points</p>
-              </div>
-            ))}
+            {Array.isArray(volunteerEvents) &&
+              volunteerEvents.slice(0, 3).map((event) => (
+                <div key={event.id || event._id} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="font-semibold text-gray-800">{event.title}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {event.event_date ? new Date(event.event_date).toLocaleDateString() : "Date TBD"} • {event.registered_count}/{event.max_volunteers} registered
+                  </p>
+                  <p className="text-xs text-green-600 font-semibold mt-1">+{event.points_reward} points</p>
+                </div>
+              ))}
             <Link to="/volunteers" className="text-green-600 hover:text-green-700 font-semibold text-sm">
               View all →
             </Link>

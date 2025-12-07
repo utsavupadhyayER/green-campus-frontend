@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Leaf, CircleUser as UserCircle, Building2, ChefHat, Shield } from 'lucide-react';
+import { Leaf, CircleUser as UserCircle, Building2, ChefHat } from 'lucide-react';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -13,29 +13,44 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
+  // NO ADMIN OPTION HERE
   const roles = [
     { value: 'student', label: 'Student', icon: UserCircle },
     { value: 'ngo', label: 'NGO', icon: Building2 },
     { value: 'mess_staff', label: 'Mess Staff', icon: ChefHat },
-    { value: 'admin', label: 'Admin', icon: Shield },
   ];
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Password validation
+  const passwordRegex = /^(?=.*[0-9]).{6,}$/;
 
   const roleRedirectMap = {
     student: '/food',
     ngo: '/volunteers',
-    mess_staff: '/donations',
-    admin: '/impact',
+    mess_staff: '/food',
   };
 
   const handleRegister = async () => {
+    setMessage('');
+
     if (!selectedRole || !fullName || !email || !password) {
       setMessage("All fields are required");
       return;
     }
 
+    if (!emailRegex.test(email)) {
+      setMessage("Enter a valid email address");
+      return;
+    }
+
+    if (!passwordRegex.test(password)) {
+      setMessage("Password must be at least 6 characters and contain a number");
+      return;
+    }
+
     try {
       await signUp(fullName, email, password, selectedRole);
-
       navigate(roleRedirectMap[selectedRole] || '/');
     } catch (err) {
       setMessage(err.response?.data?.message || "Registration failed");
@@ -49,7 +64,7 @@ export default function RegisterPage() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Leaf className="w-16 h-16 text-green-600" />
-            <h1 className="text-5xl font-bold text-gray-800">GreenCampus </h1>
+            <h1 className="text-5xl font-bold text-gray-800">GreenCampus</h1>
           </div>
           <p className="text-xl text-gray-600">Real-Time Sustainability Platform</p>
         </div>
@@ -78,12 +93,25 @@ export default function RegisterPage() {
           </div>
 
           <div className="mb-4">
-            <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Full Name"
-              value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            <input className="w-full p-3 mb-3 border rounded-lg" placeholder="Email"
-              value={email} onChange={(e) => setEmail(e.target.value)} />
-            <input className="w-full p-3 border rounded-lg" placeholder="Password" type="password"
-              value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input
+              className="w-full p-3 mb-3 border rounded-lg"
+              placeholder="Full Name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+            <input
+              className="w-full p-3 mb-3 border rounded-lg"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className="w-full p-3 border rounded-lg"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
           {message && <p className="text-center text-red-600 mb-4">{message}</p>}
