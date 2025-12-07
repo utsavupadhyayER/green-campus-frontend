@@ -57,7 +57,7 @@ export default function Navbar() {
             className="flex items-center gap-2 text-2xl font-bold text-green-700"
           >
             <Leaf className="w-8 h-8" />
-            <span>GreenCampus 2.0</span>
+            <span>GreenCampus </span>
           </Link>
 
           {/* Mobile Toggle */}

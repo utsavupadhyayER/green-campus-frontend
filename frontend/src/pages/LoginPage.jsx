@@ -47,7 +47,7 @@ export default function LoginPage() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Leaf className="w-16 h-16 text-green-600" />
-            <h1 className="text-5xl font-bold text-gray-800">GreenCampus 2.0</h1>
+            <h1 className="text-5xl font-bold text-gray-800">GreenCampus </h1>
           </div>
           <p className="text-xl text-gray-600">Login to continue</p>
         </div>
